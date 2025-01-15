@@ -60,7 +60,7 @@ public class UserDataAccess {
         User user = null;
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
-            reader.readLine();
+            reader.readLine();  // ヘッダー行をスキップ
             while ((line = reader.readLine()) != null) {
                 String[] values = line.split(",");
                 int userCode = Integer.parseInt(values[0]);
@@ -68,7 +68,7 @@ public class UserDataAccess {
                     String name = values[1];
                     String userEmail = values[2];
                     String userPassword = values[3];
-
+    
                     user = new User(userCode, name, userEmail, userPassword);
                     break;
                 }
@@ -76,6 +76,6 @@ public class UserDataAccess {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return null;
+        return user;
     }
 }

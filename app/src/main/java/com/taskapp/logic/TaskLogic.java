@@ -3,9 +3,12 @@ package com.taskapp.logic;
 import com.taskapp.dataaccess.LogDataAccess;
 import com.taskapp.dataaccess.TaskDataAccess;
 import com.taskapp.dataaccess.UserDataAccess;
+import com.taskapp.exception.AppException;
+import com.taskapp.model.Log;
 import com.taskapp.model.Task;
 import com.taskapp.model.User;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public class TaskLogic {
@@ -39,42 +42,29 @@ public class TaskLogic {
      * @param loginUser ログインユーザー
      */
     public void showAll(User loginUser) {
-        List<Task> tasks = taskDataAccess.findAll();
-    
-        if (tasks.isEmpty()) {
-            System.out.println("タスクはありません");
-            return;
-        }
+        List<Task> tasks = taskDataAccess.findAll(); // すべてのタスクを取得
     
         tasks.forEach(task -> {
             String status = "";
             switch (task.getStatus()) {
-                case 0:
-                    status = "未着手";
-                    break;
-                case 1:
-                    status = "着手中";
-                    break;
-                case 2:
-                    status = "完了";
-                    break;
-                default:
-                    status = "不明";
+                case 0: status = "未着手"; break;
+                case 1: status = "着手中"; break;
+                case 2: status = "完了"; break;
+                default: status = "不明なステータス"; break;
             }
     
-            // 担当者情報を取得
-            String repUserName = "担当者情報なし";
-            if (task.getRepUser() != null) {
-                repUserName = task.getRepUser().getName();
-                if (task.getRepUser().getCode() == loginUser.getCode()) {
-                    repUserName = "あなたが担当しています";
-                } else {
-                    repUserName = task.getRepUser().getName() + "が担当しています";
-                }
+            // 担当者を表示する
+            User assignedUser = task.getRepUser();
+            String assignedUserName = assignedUser != null ? assignedUser.getName() : "不明な担当者";
+    
+            if (assignedUser != null && assignedUser.getCode() == loginUser.getCode()) {
+                assignedUserName = "あなたが担当しています";
+            } else {
+                assignedUserName = assignedUser != null ? assignedUser.getName() + "が担当しています" : "不明な担当者が担当しています";
             }
     
             // タスク情報を表示
-            System.out.println(task.getCode() + ". タスク名：" + task.getName() + ", 担当者名：" + repUserName + ", ステータス：" + status);
+            System.out.println("タスク名：" + task.getName() + ", 担当者名：" + assignedUserName + ", ステータス：" + status);
         });
     }
 
@@ -90,9 +80,32 @@ public class TaskLogic {
      * @param loginUser ログインユーザー
      * @throws AppException ユーザーコードが存在しない場合にスローされます
      */
-    // public void save(int code, String name, int repUserCode,
-    //                 User loginUser) throws AppException {
-    // }
+    public void save(int code, String name, int repUserCode, User loginUser) throws AppException {
+        // 同じタスクコードのタスクがすでに存在しないか確認
+        Task existingTask = taskDataAccess.findByCode(code);  // findByCodeメソッドを使う
+        if (existingTask != null) {
+            throw new AppException("指定されたタスクコードはすでに存在します");
+        }
+
+        // 担当ユーザーが存在するかを確認
+        User repUser = userDataAccess.findByCode(repUserCode);
+        if (repUser == null) {
+            throw new AppException("存在するユーザーコードを入力してください");
+        }
+
+        // 新しいタスクを作成（ステータスは0: 未着手）
+        Task newTask = new Task(code, name, 0, repUser);
+
+        // 新しいタスクを保存
+        taskDataAccess.save(newTask);
+
+        // タスクの登録に伴うログを作成
+        Log log = new Log(code, loginUser.getCode(), 0, LocalDate.now());
+        logDataAccess.save(log);
+
+        // 登録完了メッセージを表示
+        System.out.println(name + "の登録が完了しました。");
+    }
 
     /**
      * タスクのステータスを変更します。

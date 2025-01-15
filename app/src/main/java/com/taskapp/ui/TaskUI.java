@@ -3,13 +3,19 @@ package com.taskapp.ui;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.LocalDate;
 
 import javax.print.DocFlavor.READER;
 
 import com.taskapp.exception.AppException;
 import com.taskapp.logic.TaskLogic;
 import com.taskapp.logic.UserLogic;
+import com.taskapp.model.Log;
+import com.taskapp.model.Task;
 import com.taskapp.model.User;
+import com.taskapp.dataaccess.TaskDataAccess;
+import com.taskapp.dataaccess.UserDataAccess;
+import com.taskapp.dataaccess.LogDataAccess;
 
 public class TaskUI {
     private final BufferedReader reader;
@@ -18,12 +24,21 @@ public class TaskUI {
 
     private final TaskLogic taskLogic;
 
+    private final UserDataAccess userDataAccess;
+
+    private final TaskDataAccess taskDataAccess;
+
+    private final LogDataAccess logDataAccess;
+
     private User loginUser;
 
     public TaskUI() {
         reader = new BufferedReader(new InputStreamReader(System.in));
         userLogic = new UserLogic();
         taskLogic = new TaskLogic();
+        userDataAccess = new UserDataAccess();
+        taskDataAccess = new TaskDataAccess();
+        logDataAccess = new LogDataAccess();
     }
 
     /**
@@ -32,10 +47,15 @@ public class TaskUI {
      * @param userLogic
      * @param taskLogic
      */
-    public TaskUI(BufferedReader reader, UserLogic userLogic, TaskLogic taskLogic) {
-        this.reader = reader;
-        this.userLogic = userLogic;
-        this.taskLogic = taskLogic;
+    public TaskUI(BufferedReader reader, UserLogic userLogic, TaskLogic taskLogic,
+               UserDataAccess userDataAccess, TaskDataAccess taskDataAccess,
+               LogDataAccess logDataAccess) {
+                this.reader = reader;
+                this.userLogic = userLogic;
+                this.taskLogic = taskLogic;
+                this.userDataAccess = userDataAccess;
+                this.taskDataAccess = taskDataAccess;
+                this.logDataAccess = logDataAccess;
     }
 
     /**
@@ -65,8 +85,10 @@ public class TaskUI {
                 switch (selectMenu) {
                     case "1":
                         taskLogic.showAll(loginUser);
+                        selectSubMenu();
                         break;
                     case "2":
+                        inputNewInformation();
                         break;
                     case "3":
                         System.out.println("ログアウトしました。");
@@ -116,8 +138,58 @@ public class TaskUI {
      * @see #isNumeric(String)
      * @see com.taskapp.logic.TaskLogic#save(int, String, int, User)
      */
-    // public void inputNewInformation() {
-    // }
+    public void inputNewInformation() {
+    boolean flg = true;
+    while (flg) {
+        try {
+            System.out.print("タスクコードを入力してください：");
+            String taskCode = reader.readLine();
+
+            if (!isNumeric(taskCode)) {
+                System.out.println("コードは半角の数字で入力してください");
+                System.out.println();
+                continue;
+            }
+
+            System.out.print("タスク名を入力してください：");
+            String taskName = reader.readLine();
+
+            if (taskName.length() > 10) {
+                System.out.println("タスク名は10文字以内で入力してください");
+                System.out.println();
+                continue;
+            }
+
+            System.out.print("担当するユーザーのコードを選択してください：");
+            String userCode = reader.readLine();
+
+            if (!isNumeric(userCode)) {
+                System.out.println("ユーザーのコードは半角の数字で入力してください");
+                System.out.println();
+                continue;
+            }
+
+            User user = userDataAccess.findByCode(Integer.parseInt(userCode));
+            if (user == null) {
+                System.out.println("存在するユーザーコードを入力してください");
+                System.out.println();
+                continue;
+            }
+
+            int code = Integer.parseInt(taskCode);
+            Task newTask = new Task(code, taskName, 0, user);
+            taskDataAccess.save(newTask);
+
+            Log log = new Log(code, loginUser.getCode(), 0, LocalDate.now());
+            logDataAccess.save(log);
+
+            System.out.println(taskName + "の登録が完了しました。");
+            flg = false;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
 
     /**
      * タスクのステータス変更または削除を選択するサブメニューを表示します。
@@ -125,17 +197,95 @@ public class TaskUI {
      * @see #inputChangeInformation()
      * @see #inputDeleteInformation()
      */
-    // public void selectSubMenu() {
-    // }
-
+    public void selectSubMenu() {
+        boolean flg = true;
+        while (flg) {
+            try {
+                System.out.println("以下1~2のメニューから好きな選択肢を選んでください。");
+                System.out.println("1. タスクのステータス変更, 2. メインメニューに戻る");
+                System.out.print("選択肢：");
+                String selectSubMenu = reader.readLine();
+                switch (selectSubMenu) {
+                    case "1":
+                        inputChangeInformation();
+                        flg = false;
+                        break;
+                    case "2":
+                        flg = false;
+                        break;
+                    default:
+                        System.out.println("選択肢が誤っています。1~2の中から選択してください。");
+                        break;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
     /**
      * ユーザーからのタスクステータス変更情報を受け取り、タスクのステータスを変更します。
      *
      * @see #isNumeric(String)
      * @see com.taskapp.logic.TaskLogic#changeStatus(int, int, User)
      */
-    // public void inputChangeInformation() {
-    // }
+    public void inputChangeInformation() {
+        boolean flg = true;
+        while (flg) {
+            try {
+                // タスクコードの入力
+                System.out.print("ステータスを変更するタスクコードを入力してください：");
+                String taskCodeStr = reader.readLine();
+                if (!isNumeric(taskCodeStr)) {
+                    System.out.println("コードは半角の数字で入力してください");
+                    continue;
+                }
+                int taskCode = Integer.parseInt(taskCodeStr);
+    
+                // 変更後ステータスの選択
+                System.out.println("どのステータスに変更するか選択してください。");
+                System.out.println("1. 着手中, 2. 完了");
+                System.out.print("選択肢：");
+                String statusStr = reader.readLine();
+                if (!isNumeric(statusStr)) {
+                    System.out.println("ステータスは半角の数字で入力してください");
+                    continue;
+                }
+                int newStatus = Integer.parseInt(statusStr);
+                if (newStatus != 1 && newStatus != 2) {
+                    System.out.println("ステータスは1・2の中から選択してください");
+                    continue;
+                }
+    
+                // タスクの取得とステータス変更前のチェック
+                Task task = taskDataAccess.findByCode(taskCode);
+                if (task == null) {
+                    System.out.println("存在するタスクコードを入力してください");
+                    continue;
+                }
+    
+                int currentStatus = task.getStatus();
+                if ((currentStatus == 0 && newStatus != 1) || (currentStatus == 1 && newStatus != 2)) {
+                    System.out.println("ステータスは、前のステータスより1つ先のもののみを選択してください");
+                    continue;
+                }
+    
+                // ステータスの更新
+                task.setStatus(newStatus);
+                taskDataAccess.update(task);
+    
+                // ログの記録
+                Log log = new Log(task.getTaskCode(), loginUser.getCode(), newStatus, LocalDate.now());
+                logDataAccess.save(log);
+    
+                System.out.println("ステータスの変更が完了しました。");
+                flg = false;
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (AppException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+    }
 
     /**
      * ユーザーからのタスク削除情報を受け取り、タスクを削除します。
@@ -153,7 +303,7 @@ public class TaskUI {
      * @param inputText 判定する文字列
      * @return 数値であればtrue、そうでなければfalse
      */
-    // public boolean isNumeric(String inputText) {
-    //     return false;
-    // }
+    public boolean isNumeric(String inputText) {
+        return inputText.chars().allMatch(c -> Character.isDigit((char) c));
+    }
 }
