@@ -102,13 +102,27 @@ public class TaskDataAccess {
      * タスクデータを更新します。
      * @param updateTask 更新するタスク
      */
-    // public void update(Task updateTask) {
-    //     try () {
+    public void update(Task updateTask) {
+        List<Task> tasks = findAll();
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            writer.write("Code,Name,Status,RepUserCode");
+            writer.newLine();
 
-    //     } catch (IOException e) {
-    //         e.printStackTrace();
-    //     }
-    // }
+            String line;
+            for (Task task : tasks) {
+                if (task.getCode() == updateTask.getCode()) {
+                    line = createLine(updateTask);
+                } else {
+                    line = createLine(task);
+                    continue;
+                }
+                writer.write(line);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     /**
      * コードを基にタスクデータを削除します。

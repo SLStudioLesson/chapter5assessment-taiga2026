@@ -204,6 +204,7 @@ public class TaskUI {
                 System.out.println("以下1~2のメニューから好きな選択肢を選んでください。");
                 System.out.println("1. タスクのステータス変更, 2. メインメニューに戻る");
                 System.out.print("選択肢：");
+                System.out.println();
                 String selectSubMenu = reader.readLine();
                 switch (selectSubMenu) {
                     case "1":
@@ -237,6 +238,7 @@ public class TaskUI {
                 String taskCodeStr = reader.readLine();
                 if (!isNumeric(taskCodeStr)) {
                     System.out.println("コードは半角の数字で入力してください");
+                    System.out.println();
                     continue;
                 }
                 int taskCode = Integer.parseInt(taskCodeStr);
@@ -245,14 +247,16 @@ public class TaskUI {
                 System.out.println("どのステータスに変更するか選択してください。");
                 System.out.println("1. 着手中, 2. 完了");
                 System.out.print("選択肢：");
-                String statusStr = reader.readLine();
-                if (!isNumeric(statusStr)) {
+                String status = reader.readLine();
+                if (!isNumeric(status)) {
                     System.out.println("ステータスは半角の数字で入力してください");
+                    System.out.println();
                     continue;
                 }
-                int newStatus = Integer.parseInt(statusStr);
+                int newStatus = Integer.parseInt(status);
                 if (newStatus != 1 && newStatus != 2) {
                     System.out.println("ステータスは1・2の中から選択してください");
+                    System.out.println();
                     continue;
                 }
     
@@ -260,12 +264,14 @@ public class TaskUI {
                 Task task = taskDataAccess.findByCode(taskCode);
                 if (task == null) {
                     System.out.println("存在するタスクコードを入力してください");
+                    System.out.println();
                     continue;
                 }
     
                 int currentStatus = task.getStatus();
                 if ((currentStatus == 0 && newStatus != 1) || (currentStatus == 1 && newStatus != 2)) {
                     System.out.println("ステータスは、前のステータスより1つ先のもののみを選択してください");
+                    System.out.println();
                     continue;
                 }
     
@@ -274,15 +280,13 @@ public class TaskUI {
                 taskDataAccess.update(task);
     
                 // ログの記録
-                Log log = new Log(task.getTaskCode(), loginUser.getCode(), newStatus, LocalDate.now());
+                Log log = new Log(task.getCode(), loginUser.getCode(), newStatus, LocalDate.now());
                 logDataAccess.save(log);
     
                 System.out.println("ステータスの変更が完了しました。");
                 flg = false;
             } catch (IOException e) {
                 e.printStackTrace();
-            } catch (AppException e) {
-                System.out.println(e.getMessage());
             }
         }
     }

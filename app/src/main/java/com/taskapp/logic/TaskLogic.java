@@ -118,9 +118,46 @@ public class TaskLogic {
      * @param loginUser ログインユーザー
      * @throws AppException タスクコードが存在しない、またはステータスが前のステータスより1つ先でない場合にスローされます
      */
-    // public void changeStatus(int code, int status,
-    //                         User loginUser) throws AppException {
-    // }
+    public void changeStatus(int code, int status, User loginUser) throws AppException {
+        // タスクコードに対応するタスクを取得
+        Task task = taskDataAccess.findByCode(code);
+        
+        // タスクが存在しない場合
+        if (task == null) {
+            throw new AppException("存在するタスクコードを入力してください");
+        }
+    
+        // 現在のステータスを取得
+        int currentStatus = task.getStatus();
+        
+        // ステータス変更が前のステータスより1つ先かどうかを確認
+        if (currentStatus == 0) {
+            // 現在のステータスが「未着手（0）」の場合
+            if (status != 1 && status != 2) {
+                throw new AppException("ステータスは、前のステータスより1つ先のもののみを選択してください");
+            }
+        } else if (currentStatus == 1) {
+            // 現在のステータスが「着手中（1）」の場合
+            if (status != 2) {
+                throw new AppException("ステータスは、前のステータスより1つ先のもののみを選択してください");
+            }
+        } else if (currentStatus == 2) {
+            // 現在のステータスが「完了（2）」の場合
+            throw new AppException("完了したタスクはステータスを変更できません");
+        }
+    
+        // ステータスの変更
+        task.setStatus(status);
+        
+        // タスクを更新
+        taskDataAccess.update(task);
+        
+        // ステータス変更のログを記録
+        Log log = new Log(code, loginUser.getCode(), status, LocalDate.now());
+        logDataAccess.save(log);
+        
+        System.out.println("ステータスの変更が完了しました。");
+    }
 
     /**
      * タスクを削除します。
