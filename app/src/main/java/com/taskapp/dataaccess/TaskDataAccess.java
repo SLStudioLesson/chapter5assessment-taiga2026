@@ -114,7 +114,6 @@ public class TaskDataAccess {
                     line = createLine(updateTask);
                 } else {
                     line = createLine(task);
-                    continue;
                 }
                 writer.write(line);
                 writer.newLine();
